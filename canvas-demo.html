@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Pixels</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="myCanvas" width="800" height="800"></canvas>
+    <script>
+        // Get the canvas element and its 2D context
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Global variables
+        const BACKGROUND_PX_WIDTH = canvas.width;
+        const BACKGROUND_PX_HEIGHT = canvas.height;
+        const CANVAS_PX_WIDTH = 500;
+        const CANVAS_PX_HEIGHT = 500;
+        const NUMBER_OF_SEGMENTS = 5;
+        const GRID_SEGMENT_WIDTH = CANVAS_PX_WIDTH / NUMBER_OF_SEGMENTS;
+        const GRID_SEGMENT_HEIGHT = CANVAS_PX_HEIGHT / NUMBER_OF_SEGMENTS;
+
+        // Create an ImageData object
+        const imageData = ctx.createImageData(BACKGROUND_PX_WIDTH, BACKGROUND_PX_HEIGHT);
+
+        // Set pixel data (RGBA)
+        function setPixel(imageData, x, y, r, g, b, offset) {
+            let effectiveOffsetX = offset ? (BACKGROUND_PX_WIDTH - CANVAS_PX_WIDTH) / 2 : 0;
+            let effectiveOffsetY = offset ? (BACKGROUND_PX_HEIGHT - CANVAS_PX_HEIGHT) / 2 : 0;
+            const index = ((y + effectiveOffsetY) * imageData.width + (x + effectiveOffsetX)) * 4;
+            imageData.data[index] = r;     // Red
+            imageData.data[index + 1] = g; // Green
+            imageData.data[index + 2] = b; // Blue
+            imageData.data[index + 3] = 255; // Alpha
+        }
+
+        function resetBackground() {
+            for (let y = 0; y < BACKGROUND_PX_HEIGHT; y++) {
+                for (let x = 0; x < BACKGROUND_PX_WIDTH; x++) {
+                    setPixel(imageData, x, y, 0, 0, 0, false);
+                }
+            }
+        }
+
+        function resetCanvas() {
+            for (let y = 0; y < CANVAS_PX_HEIGHT; y++) {
+                for (let x = 0; x < CANVAS_PX_WIDTH; x++) {
+                    setPixel(imageData, x, y, 50, 0, 0, true);
+                }
+            }
+        }
+
+        function drawPerlinGrid() {
+            for (let y = 0; y <= CANVAS_PX_HEIGHT; y++) {
+                for (let x = 0; x <= CANVAS_PX_WIDTH; x++) {
+                    if (x % GRID_SEGMENT_WIDTH === 0) {
+                        setPixel(imageData, x, y, 255, 255, 255, true);
+                    }
+                    if (y % GRID_SEGMENT_HEIGHT === 0) {
+                        setPixel(imageData, x, y, 255, 255, 255, true);
+                    }
+                }
+            }
+        }
+
+        var gradientVectors = [];
+        function drawGradientVectors() {
+            ctx.strokeStyle = 'red'; // Set stroke style outside the loop to avoid resetting it each time
+            ctx.lineWidth = 4;
+            const offsetX = (BACKGROUND_PX_WIDTH - CANVAS_PX_WIDTH) / 2;
+            const offsetY = (BACKGROUND_PX_HEIGHT - CANVAS_PX_HEIGHT) / 2;
+
+            for (let y = 0; y <= NUMBER_OF_SEGMENTS; y++) {
+                for (let x = 0; x <= NUMBER_OF_SEGMENTS; x++) {
+                    let originX = x * GRID_SEGMENT_WIDTH + offsetX;
+                    let originY = y * GRID_SEGMENT_HEIGHT + offsetY;
+                    let directionX = originX + (Math.random() * 100 - 50);
+                    let directionY = originY + (Math.random() * 100 - 50);
+
+                    // Calculate the direction vector
+                    let dirX = directionX - originX;
+                    let dirY = directionY - originY;
+
+                    // Normalize the direction vector
+                    let length = Math.sqrt(dirX * dirX + dirY * dirY);
+                    dirX /= length;
+                    dirY /= length;
+
+                    // Scale the normalized vector to the desired length
+                    dirX *= 50;
+                    dirY *= 50;
+
+                    // Calculate the endpoint of the scaled vector
+                    let endX = originX + dirX;
+                    let endY = originY + dirY;
+                    let vector = {
+                        originX,
+                        originY,
+                        endX,
+                        endY
+                    };
+                    gradientVectors[`${x}:${y}`] = vector;
+
+                    ctx.beginPath();
+                    ctx.moveTo(originX, originY); // Start at the grid point
+                    ctx.lineTo(endX, endY); // End at the normalized and scaled direction point
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function perlinAtPosition(x, y) {
+            // Find grid segment
+            var gridSegmentX = Math.floor(x / GRID_SEGMENT_WIDTH);
+            var gridSegmentY = Math.floor(y / GRID_SEGMENT_HEIGHT);
+
+            // Find gradient vectors
+            gradientVectorsForPosition = [
+                gradientVectors[`${x}:${y}`],
+                gradientVectors[`${x + 1}:${y}`],
+                gradientVectors[`${x}:${y + 1}`],
+                gradientVectors[`${x + 1}:${y + 1}`],
+            ];
+
+            // Calculate offset vector for each corner
+
+            // Dot product each offset with its relative gradient
+
+            // Interpolate x
+
+            // Interpolat y
+
+            // Interpolate x, y
+
+            // Draw
+        }
+
+        function interpolate(dotA, dotB, weight) {
+            return (dotA - dotB) * (3.0 - weight * 2.0) * w * w + dotA;
+        }
+
+        resetBackground();
+        resetCanvas();
+        drawPerlinGrid();
+        // Put the image data back to the canvas
+        ctx.putImageData(imageData, 0, 0);
+        drawGradientVectors(); // Draw vectors after setting up the background and grid
+
+    </script>
+</body>
+
+</html>
