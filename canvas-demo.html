@@ -26,8 +26,8 @@
         // Global variables
         const BACKGROUND_PX_WIDTH = canvas.width;
         const BACKGROUND_PX_HEIGHT = canvas.height;
-        const CANVAS_PX_WIDTH = 500;
-        const CANVAS_PX_HEIGHT = 500;
+        const CANVAS_PX_WIDTH = 300;
+        const CANVAS_PX_HEIGHT = 300;
         const NUMBER_OF_SEGMENTS = 5;
         const GRID_SEGMENT_WIDTH = CANVAS_PX_WIDTH / NUMBER_OF_SEGMENTS;
         const GRID_SEGMENT_HEIGHT = CANVAS_PX_HEIGHT / NUMBER_OF_SEGMENTS;
@@ -66,10 +66,10 @@
             for (let y = 0; y <= CANVAS_PX_HEIGHT; y++) {
                 for (let x = 0; x <= CANVAS_PX_WIDTH; x++) {
                     if (x % GRID_SEGMENT_WIDTH === 0) {
-                        setPixel(imageData, x, y, 255, 255, 255, true);
+                        setPixel(imageData, x, y, 175, 255, 255, true);
                     }
                     if (y % GRID_SEGMENT_HEIGHT === 0) {
-                        setPixel(imageData, x, y, 255, 255, 255, true);
+                        setPixel(imageData, x, y, 175, 255, 255, true);
                     }
                 }
             }
@@ -113,53 +113,175 @@
                     };
                     gradientVectors[`${x}:${y}`] = vector;
 
+
+                }
+            }
+        }
+
+        function drawGradientVectors2() {
+            for (let y = 0; y <= NUMBER_OF_SEGMENTS; y++) {
+                for (let x = 0; x <= NUMBER_OF_SEGMENTS; x++) {
+                    let vector = gradientVectors[`${x}:${y}`];
                     ctx.beginPath();
-                    ctx.moveTo(originX, originY); // Start at the grid point
-                    ctx.lineTo(endX, endY); // End at the normalized and scaled direction point
+                    ctx.moveTo(vector.originX, vector.originY); // Start at the grid point
+                    ctx.lineTo(vector.endX, vector.endY); // End at the normalized and scaled direction point
                     ctx.strokeStyle = 'red';
                     ctx.lineWidth = 4;
                     ctx.stroke();
                 }
             }
-        }
 
+        }
         function perlinAtPosition(x, y) {
-            // Find grid segment
-            var gridSegmentX = Math.floor(x / GRID_SEGMENT_WIDTH);
-            var gridSegmentY = Math.floor(y / GRID_SEGMENT_HEIGHT);
+    // Find grid segment
+    var gridSegmentX = Math.floor(x / GRID_SEGMENT_WIDTH);
+    var gridSegmentY = Math.floor(y / GRID_SEGMENT_HEIGHT);
 
-            // Find gradient vectors
-            gradientVectorsForPosition = [
-                gradientVectors[`${x}:${y}`],
-                gradientVectors[`${x + 1}:${y}`],
-                gradientVectors[`${x}:${y + 1}`],
-                gradientVectors[`${x + 1}:${y + 1}`],
-            ];
+    // Find gradient vectors
+    let gradientVectorsForPosition = [
+        gradientVectors[`${gridSegmentX}:${gridSegmentY}`],
+        gradientVectors[`${gridSegmentX + 1}:${gridSegmentY}`],
+        gradientVectors[`${gridSegmentX}:${gridSegmentY + 1}`],
+        gradientVectors[`${gridSegmentX + 1}:${gridSegmentY + 1}`],
+    ];
 
-            // Calculate offset vector for each corner
+    // Calculate offset vector for each corner
+    let topLeftPosX = gridSegmentX * GRID_SEGMENT_WIDTH;
+    let topLeftPosY = gridSegmentY * GRID_SEGMENT_HEIGHT;
+    let topRightPosX = topLeftPosX + GRID_SEGMENT_WIDTH;
+    let topRightPosY = topLeftPosY;
+    let bottomLeftPosX = topLeftPosX;
+    let bottomLeftPosY = topLeftPosY + GRID_SEGMENT_HEIGHT;
+    let bottomRightPosX = topLeftPosX + GRID_SEGMENT_WIDTH;
+    let bottomRightPosY = topLeftPosY + GRID_SEGMENT_HEIGHT;
 
-            // Dot product each offset with its relative gradient
+    var offsetVectors = [
+        { vecX: (x - topLeftPosX) / GRID_SEGMENT_WIDTH, vecY: (y - topLeftPosY) / GRID_SEGMENT_HEIGHT },
+        { vecX: (x - topRightPosX) / GRID_SEGMENT_WIDTH, vecY: (y - topRightPosY) / GRID_SEGMENT_HEIGHT },
+        { vecX: (x - bottomLeftPosX) / GRID_SEGMENT_WIDTH, vecY: (y - bottomLeftPosY) / GRID_SEGMENT_HEIGHT },
+        { vecX: (x - bottomRightPosX) / GRID_SEGMENT_WIDTH, vecY: (y - bottomRightPosY) / GRID_SEGMENT_HEIGHT },
+    ];
 
-            // Interpolate x
+    // Dot product each offset with its relative gradient
+    let dotProducts = [];
+    for (var i = 0; i < offsetVectors.length; i++) {
+        let gradient = gradientVectorsForPosition[i];
+        let magnitude = Math.sqrt(Math.pow(gradient.endX - gradient.originX, 2) + Math.pow(gradient.endY - gradient.originY, 2));
+        let normalizedGradient = {
+            x: (gradient.endX - gradient.originX) / magnitude,
+            y: (gradient.endY - gradient.originY) / magnitude
+        };
 
-            // Interpolat y
+        let dotProduct = offsetVectors[i].vecX * normalizedGradient.x + offsetVectors[i].vecY * normalizedGradient.y;
+        dotProducts.push(dotProduct);
+    }
 
-            // Interpolate x, y
+    // Smoothstep function for interpolation
+    function fade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+    }
 
-            // Draw
+    function interpolate(a, b, t) {
+        var ft = fade(t);
+        return a + ft * (b - a);
+    }
+
+    // Relative positions
+    var relativeX = (x - topLeftPosX) / GRID_SEGMENT_WIDTH;
+    var relativeY = (y - topLeftPosY) / GRID_SEGMENT_HEIGHT;
+
+    // Interpolate x
+    var x1 = interpolate(dotProducts[0], dotProducts[1], relativeX);
+    var x2 = interpolate(dotProducts[2], dotProducts[3], relativeX);
+
+    // Interpolate y using the results of x interpolation
+    var value = interpolate(x1, x2, relativeY);
+    // console.log(value);
+
+    // Ensure the final value is within the range [-1, 1]
+    let grayscaledValue = (value + 0.5) / 0.5;
+    let color = interpolateColor(color1, color2, grayscaledValue);
+    setPixel(imageData, x, y, color[0], color[1], color[2], true);
+
+}
+
+const color1 = [Math.random() * 255, Math.random() * 255, Math.random() * 255];
+    const color2 = [Math.random() * 255, Math.random() * 255, Math.random() * 255];
+
+function interpolateColor(color1, color2, factor) {
+    const result = color1.slice();
+    for (let i = 0; i < 3; i++) {
+        result[i] = Math.round(result[i] + factor * (color2[i] - color1[i]));
+    }
+    return result;
+}
+
+
+t = 0.5;
+function drawPerlin() {
+    // console.log(gradientVectors);
+
+
+    for (let y = 0; y <= NUMBER_OF_SEGMENTS; y++) {
+        for (let x = 0; x <= NUMBER_OF_SEGMENTS; x++) {
+            let gradient = gradientVectors[`${x}:${y}`];
+            // console.log('x ' + x + ' y ' + y);
+            // console.log(gradient);
+            let magnitude = Math.sqrt(Math.pow(gradient.endX - gradient.originX, 2) + Math.pow(gradient.endY - gradient.originY, 2));
+            let normalizedGradient = {
+                x: (gradient.endX - gradient.originX) / magnitude,
+                y: (gradient.endY - gradient.originY) / magnitude
+            };
+            let angle = Math.atan2(normalizedGradient.y, normalizedGradient.x); // Get the current angle of the gradient
+            let newAngle = angle + Math.sin(t); // Increment the angle by t for rotation
+
+            if (newAngle > 2 * Math.PI) {
+                newAngle -= 2 * Math.PI; // Reset the angle to avoid large values
+            }
+            gradientVectors[`${x}:${y}`] = {
+                originX: 0,
+                originY: 0,
+                endX: Math.cos(newAngle), // Use cosine for x
+                endY: Math.sin(newAngle), // Use sine for y
+            };
         }
+    }
 
-        function interpolate(dotA, dotB, weight) {
-            return (dotA - dotB) * (3.0 - weight * 2.0) * w * w + dotA;
+    // console.log(gradientVectors['3:3']);
+    for (var y = 0; y  < CANVAS_PX_HEIGHT; y++) {
+            for (var x = 0; x < CANVAS_PX_WIDTH; x++) {
+                perlinAtPosition(x, y);
+            }
         }
+        // drawPerlinGrid()
+        ctx.putImageData(imageData, 0, 0);
+        for (let y = 0; y <= NUMBER_OF_SEGMENTS; y++) {
+                for (let x = 0; x <= NUMBER_OF_SEGMENTS; x++) {
+                    let vector = gradientVectors[`${x}:${y}`];
+                    ctx.beginPath();
+                    ctx.moveTo(vector.originX, vector.originY); // Start at the grid point
+                    ctx.lineTo(vector.endX, vector.endY); // End at the normalized and scaled direction point
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+                }
+            }
+}
 
         resetBackground();
         resetCanvas();
         drawPerlinGrid();
         // Put the image data back to the canvas
-        ctx.putImageData(imageData, 0, 0);
+        // ctx.putImageData(imageData, 0, 0);
         drawGradientVectors(); // Draw vectors after setting up the background and grid
+        var t0 = performance.now();
+        
+        console.log(gradientVectors);
+        setInterval(() => { drawPerlin();  ctx.putImageData(imageData, 0, 0);            
+ // Draw vectors after setting up the background and grid
+ }, 100);
 
+        var t1 = performance.now();
     </script>
 </body>
 
